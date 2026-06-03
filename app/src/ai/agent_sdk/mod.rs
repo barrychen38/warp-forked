@@ -868,9 +868,8 @@ impl AgentDriverRunner {
                 return Ok(());
             }
             Err(err) => {
-                return Err(AgentDriverError::SkillResolutionFailed(format!(
-                    "Failed to fetch git credentials before skill resolution: {err:#}"
-                )));
+                log::warn!("Failed to fetch git credentials before skill resolution: {err:#}");
+                return Ok(());
             }
         };
         if credentials.is_empty() {
@@ -878,13 +877,24 @@ impl AgentDriverRunner {
             return Ok(());
         }
 
-        driver::git_credentials::configure_git_credentials(&credentials).map_err(|err| {
-            AgentDriverError::SkillResolutionFailed(format!(
-                "Failed to write git credentials before skill resolution: {err:#}"
-            ))
-        })?;
+        if let Err(err) = driver::git_credentials::configure_git_credentials(&credentials) {
+            log::warn!("Failed to write git credentials before skill resolution: {err:#}");
+            return Ok(());
+        }
         log::info!("Git credentials configured before task setup");
         Ok(())
+    }
+
+    fn skill_resolution_needs_repo_clone(args: &RunAgentArgs) -> bool {
+        if !FeatureFlag::OzPlatformSkills.is_enabled() {
+            return false;
+        }
+
+        args.sandboxed
+            && args
+                .skill
+                .as_ref()
+                .is_some_and(|skill_spec| skill_spec.org.is_some() && skill_spec.repo.is_some())
     }
 
     /// Resolve the skill spec from args, if one was provided.
@@ -906,7 +916,7 @@ impl AgentDriverRunner {
         };
 
         // In sandboxed mode with a fully-qualified spec, clone the repo first.
-        let needs_clone = args.sandboxed && skill_spec.org.is_some() && skill_spec.repo.is_some();
+        let needs_clone = Self::skill_resolution_needs_repo_clone(args);
         if needs_clone {
             let org = skill_spec.org.as_ref().expect("org checked above");
             let repo_name = skill_spec.repo.as_ref().expect("repo checked above");
@@ -960,7 +970,9 @@ impl AgentDriverRunner {
         .map_err(AgentDriverError::ConfigBuildFailed)?;
 
         if let Some(task_id_str) = args.task_id.as_ref() {
-            Self::bootstrap_git_credentials_for_task(foreground, task_id_str).await?;
+            if Self::skill_resolution_needs_repo_clone(&args) {
+                Self::bootstrap_git_credentials_for_task(foreground, task_id_str).await?;
+            }
         }
         // Resolve the skill, if we have one
         let resolved_skill =
