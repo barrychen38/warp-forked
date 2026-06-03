@@ -970,9 +970,7 @@ impl AgentDriverRunner {
         .map_err(AgentDriverError::ConfigBuildFailed)?;
 
         if let Some(task_id_str) = args.task_id.as_ref() {
-            if Self::skill_resolution_needs_repo_clone(&args) {
-                Self::bootstrap_git_credentials_for_task(foreground, task_id_str).await?;
-            }
+            Self::bootstrap_git_credentials_for_task(foreground, task_id_str).await?;
         }
         // Resolve the skill, if we have one
         let resolved_skill =
