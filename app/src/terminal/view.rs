@@ -4669,7 +4669,12 @@ impl TerminalView {
                     | RemoteServerManagerEvent::DiffStateSnapshotReceived { .. }
                     | RemoteServerManagerEvent::DiffStateMetadataUpdateReceived { .. }
                     | RemoteServerManagerEvent::DiffStateFileDeltaReceived { .. }
-                    | RemoteServerManagerEvent::GetBranchesResponse { .. } => {}
+                    | RemoteServerManagerEvent::GetBranchesResponse { .. }
+                    | RemoteServerManagerEvent::CommitChainResponse { .. }
+                    | RemoteServerManagerEvent::GitPushResponse { .. }
+                    | RemoteServerManagerEvent::CreatePrResponse { .. }
+                    | RemoteServerManagerEvent::GenerateCommitMessageResponse { .. }
+                    | RemoteServerManagerEvent::GetPrInfoResponse { .. } => {}
                 }
             });
         }
